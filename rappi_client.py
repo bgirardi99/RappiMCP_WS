@@ -10,12 +10,13 @@ Auth flow (from reverse engineering notes):
 
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path.home() / ".rappi-mcp" / ".env")
 
 BASE_URL = "https://services.rappi.cl"
 APP_VERSION = "web_v1.220.2"
@@ -34,6 +35,10 @@ class RappiClient:
         self.device_id = device_id
         self.user_id = user_id
         self.session = requests.Session()
+        # In-memory cache keyed by store_type.
+        # The v1/all/get endpoint doesn't return web-API carts, so we maintain
+        # our own authoritative state updated after every set_cart call.
+        self._cart_cache: dict[str, list[dict]] = {}
 
     # ------------------------------------------------------------------ #
     #  Internal helpers                                                    #
@@ -179,19 +184,34 @@ class RappiClient:
         return []
 
     def get_cart(self, store_type: str) -> list[dict]:
-        """Return all products currently in the cart for a store type."""
-        data = self._request(
-            "POST",
-            "/api/ms/shopping-cart/v1/all/get",
-            json={},
-        )
-        # API returns a list of store objects directly (not a {"stores": [...]} wrapper)
-        stores = data if isinstance(data, list) else data.get("stores", [])
-        for store in stores:
-            st = store.get("store_type") or store.get("type") or ""
-            if st == store_type:
-                return store.get("products", [])
-        return []
+        """Return all products currently in the cart for a store type.
+
+        Tries the v1/all/get API first; falls back to the in-memory cache
+        populated by set_cart (the v1 endpoint doesn't return web-API carts).
+        """
+        try:
+            data = self._request(
+                "POST",
+                "/api/ms/shopping-cart/v1/all/get",
+                json={},
+            )
+            # API returns a list of store objects directly (not a {"stores": [...]} wrapper)
+            stores = data if isinstance(data, list) else data.get("stores", [])
+            for store in stores:
+                st = store.get("store_type") or store.get("type") or ""
+                if st == store_type:
+                    products = store.get("products", [])
+                    if products:
+                        # Keep cache in sync with live data
+                        self._cart_cache[store_type] = [
+                            {"id": p["id"], "units": p["units"], "sale_type": p.get("sale_type", "U")}
+                            for p in products
+                        ]
+                        return self._cart_cache[store_type]
+        except Exception:
+            pass
+        # Fall back to in-memory cache (populated by set_cart)
+        return list(self._cart_cache.get(store_type, []))
 
     def set_cart(
         self,
@@ -224,7 +244,23 @@ class RappiClient:
             json=body,
         )
         if isinstance(result, list):
-            return {"stores": result}
+            result = {"stores": result}
+
+        # Update in-memory cache from the confirmed server response
+        for store in result.get("stores", []):
+            if store.get("type") == store_type:
+                self._cart_cache[store_type] = [
+                    {"id": p["id"], "units": p["units"], "sale_type": p.get("sale_type", "U")}
+                    for p in store.get("products", [])
+                ]
+                break
+        else:
+            # Response didn't include matching store — cache what we sent
+            self._cart_cache[store_type] = [
+                {"id": p["id"], "units": p["units"], "sale_type": p.get("sale_type", "U")}
+                for p in products
+            ]
+
         return result
 
     def add_to_cart(

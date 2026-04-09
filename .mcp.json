@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "rappi-mcp": {
+      "type": "stdio",
+      "command": "C:/Users/bgira/AppData/Local/Python/bin/python.exe",
+      "args": ["E:/ClaudeDrive/rappimcp/rappi_mcp.py"]
+    }
+  }
+}

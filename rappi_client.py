@@ -29,11 +29,13 @@ class RappiClient:
         refresh_token: str,
         device_id: str,
         user_id: int,
+        on_token_refresh=None,
     ):
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.device_id = device_id
         self.user_id = user_id
+        self.on_token_refresh = on_token_refresh  # callable(access_token, refresh_token) | None
         self.session = requests.Session()
         # In-memory cache keyed by store_type.
         # The v1/all/get endpoint doesn't return web-API carts, so we maintain
@@ -70,6 +72,8 @@ class RappiClient:
         data = resp.json()
         self.access_token = data["access_token"]
         self.refresh_token = data["refresh_token"]
+        if self.on_token_refresh:
+            self.on_token_refresh(self.access_token, self.refresh_token)
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
         """Make a request; refresh token once if the server asks."""

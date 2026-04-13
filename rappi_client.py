@@ -39,6 +39,10 @@ class RappiClient:
         # The v1/all/get endpoint doesn't return web-API carts, so we maintain
         # our own authoritative state updated after every set_cart call.
         self._cart_cache: dict[str, list[dict]] = {}
+        # Tracks the last store_id used per store_type to detect store switches.
+        self._last_store_id: dict[str, int] = {}
+        # Active address override (client-side only, mirrors Rappi web app behavior).
+        self._active_address: dict | None = None
 
     # ------------------------------------------------------------------ #
     #  Internal helpers                                                    #
@@ -88,12 +92,28 @@ class RappiClient:
 
     def get_active_address(self) -> dict | None:
         """Return the active delivery address (with lat/lng) from the user's saved addresses."""
+        if self._active_address is not None:
+            return self._active_address
         data = self._request("GET", "/api/ms/users-address/addresses")
         addresses = data.get("addresses", [])
         for addr in addresses:
             if addr.get("active"):
                 return addr
         return addresses[0] if addresses else None
+
+    def list_addresses(self) -> list[dict]:
+        """Return all saved delivery addresses."""
+        data = self._request("GET", "/api/ms/users-address/addresses")
+        return data.get("addresses", [])
+
+    def set_active_address(self, address_id: int) -> dict:
+        """Select a saved address by ID (client-side only — mirrors Rappi web app behavior)."""
+        addresses = self.list_addresses()
+        for addr in addresses:
+            if addr.get("id") == address_id:
+                self._active_address = addr
+                return addr
+        raise ValueError(f"Address {address_id} not found")
 
     def list_stores(
         self, category: str = "market", query: str = "", limit: int = 50
@@ -272,6 +292,10 @@ class RappiClient:
         sale_type: str,
     ) -> dict:
         """Read current cart, append item, write back."""
+        # Auto-clear cache when switching to a different store_id under the same store_type.
+        if self._last_store_id.get(store_type) != store_id:
+            self._cart_cache.pop(store_type, None)
+            self._last_store_id[store_type] = store_id
         current = self.get_cart(store_type)
         # Update quantity if already in cart, otherwise append
         for p in current:

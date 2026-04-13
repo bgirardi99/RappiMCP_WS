@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rappi-mcp"
-version = "0.2.1"
+version = "0.2.2"
 description = "MCP server for Rappi Chile — browse stores, search products, manage cart and checkout via Claude"
 readme = "README.md"
 license = { file = "LICENSE" }
